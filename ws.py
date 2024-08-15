@@ -26,24 +26,25 @@ api_token = "your_actual_api_token_here"
 
 # WebSocket connection and data processing
 async def capture_kismet_data():
-    uri = "ws://localhost:2501/"
-    headers = {
-        "Authorization": f"Token {api_token}"
-    }
-    async with websockets.connect(uri, extra_headers=headers) as websocket:
-        await websocket.send(json.dumps({
-            "Kismet": {
-                "subscribe": ["*"]  # Subscribe to all data
-            }
-        }))
+    uri = f"ws://localhost:2501/eventbus/events.ws?KISMET={api_token}"
+    
+    async with websockets.connect(uri) as websocket:
+        # Subscribe to the desired events (e.g., TIMESTAMP, DOT11_ADVERTISED_SSID)
+        subscribe_message = {
+            "SUBSCRIBE": "DOT11_ADVERTISED_SSID"
+        }
+        await websocket.send(json.dumps(subscribe_message))
 
         async for message in websocket:
             data = json.loads(message)
-            if "kismet.device.base.name" in data:
-                bssid = data.get("kismet.device.base.macaddr", "")
-                ssid = data.get("kismet.device.base.name", "")
-                last_seen = data.get("kismet.device.base.last_time", "")
-                signal_dbm = data.get("kismet.device.base.signal_dbm", None)
+            if "DOT11_ADVERTISED_SSID" in data:
+                base_device = data.get("DOT11_NEW_SSID_BASEDEV", {})
+                ssid_record = data.get("DOT11_ADVERTISED_SSID", {})
+                
+                bssid = base_device.get("kismet.device.base.macaddr", "")
+                ssid = ssid_record.get("ssid", "")
+                last_seen = base_device.get("kismet.device.base.last_time", "")
+                signal_dbm = base_device.get("kismet.device.base.signal_dbm", None)
 
                 # Print to console
                 print(f"Found AP: BSSID={bssid}, SSID={ssid}, Last Seen={last_seen}, Signal={signal_dbm} dBm")
