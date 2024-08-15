@@ -22,7 +22,6 @@ source vws/bin/activate
 
 #### You may need to change permissions of the pulled folder:
 ```
-sudo chown -R $(whoami) /home/user/vws
 sudo chown -R $(whoami) /home/user/kismet-bitmotion
 sudo chmod -R u+rwX /home/user/kismet-bitmotion
 ```
