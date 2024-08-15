@@ -4,8 +4,8 @@ import json
 from sqlalchemy import create_engine, Column, Integer, String, Float
 from sqlalchemy.orm import declarative_base, sessionmaker
 
-# Database setup
-DATABASE_URL = "sqlite:////home/db/kismet-bitmotion/kismet_data.db"  # Adjust this path as needed
+# Database setup with an absolute path
+DATABASE_URL = "sqlite:////home/db/kismet-bitmotion/kismet_data.db"
 Base = declarative_base()
 
 class AccessPoint(Base):
@@ -21,16 +21,22 @@ Base.metadata.create_all(engine)
 Session = sessionmaker(bind=engine)
 session = Session()
 
+# Replace with your actual API token
+api_token = "your_actual_api_token_here"
+
 # WebSocket connection and data processing
 async def capture_kismet_data():
-    uri = "ws://localhost:2501/kismet"  # Adjust the URI based on your Kismet setup
-    async with websockets.connect(uri) as websocket:
+    uri = "ws://localhost:2501/"
+    headers = {
+        "Authorization": f"Token {api_token}"
+    }
+    async with websockets.connect(uri, extra_headers=headers) as websocket:
         await websocket.send(json.dumps({
             "Kismet": {
                 "subscribe": ["*"]  # Subscribe to all data
             }
         }))
-        
+
         async for message in websocket:
             data = json.loads(message)
             if "kismet.device.base.name" in data:
