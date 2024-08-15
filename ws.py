@@ -23,9 +23,9 @@ Session = sessionmaker(bind=engine)
 session = Session()
 
 # Replace with your actual API token
-api_token = "your_actual_api_token_here"
+api_token = "insert token here"
 view_id = "phydot11_accesspoints"  # The view ID for IEEE802.11 Access Points
-kismet_rest_url = f"http://localhost:2501/devices/views/{view_id}/devices.json"
+kismet_rest_url = f"http://localhost:2501/devices/views/{view_id}/devices.json?KISMET={api_token}"
 
 def log_access_point(ap_data):
     bssid = ap_data.get("kismet.device.base.macaddr", "")
@@ -46,8 +46,7 @@ def log_access_point(ap_data):
     session.commit()
 
 def sweep_existing_aps():
-    headers = {"Authorization": f"Token {api_token}"}
-    response = requests.get(kismet_rest_url, headers=headers)
+    response = requests.get(kismet_rest_url)
     if response.status_code == 200:
         devices = response.json()
         for device in devices:
