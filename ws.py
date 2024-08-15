@@ -1,12 +1,11 @@
 import asyncio
 import websockets
 import json
-from sqlalchemy import create_engine, Column, Integer, String, Float, MetaData, Table
-from sqlalchemy.ext.declarative import declarative_base
-from sqlalchemy.orm import sessionmaker
+from sqlalchemy import create_engine, Column, Integer, String, Float
+from sqlalchemy.orm import declarative_base, sessionmaker
 
 # Database setup
-DATABASE_URL = "sqlite:///kismet_data.db"  # SQLite database for simplicity
+DATABASE_URL = "sqlite:///kismet_data.db"  # Adjust this path as needed
 Base = declarative_base()
 
 class AccessPoint(Base):
