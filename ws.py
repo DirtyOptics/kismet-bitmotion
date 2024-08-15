@@ -55,36 +55,44 @@ def sweep_existing_aps():
         print(f"Failed to fetch existing APs: {response.status_code}")
 
 async def capture_kismet_data():
-    sweep_existing_aps()
+    try:
+        sweep_existing_aps()
 
-    uri = f"ws://localhost:2501/eventbus/events.ws?KISMET={api_token}"
-    
-    async with websockets.connect(uri) as websocket:
-        subscribe_message = {
-            "SUBSCRIBE": "DOT11_ADVERTISED_SSID"
-        }
-        await websocket.send(json.dumps(subscribe_message))
+        uri = f"ws://localhost:2501/eventbus/events.ws?KISMET={api_token}"
+        
+        async with websockets.connect(uri) as websocket:
+            subscribe_message = {
+                "SUBSCRIBE": "DOT11_ADVERTISED_SSID"
+            }
+            await websocket.send(json.dumps(subscribe_message))
 
-        async for message in websocket:
-            data = json.loads(message)
-            if "DOT11_ADVERTISED_SSID" in data:
-                base_device = data.get("DOT11_NEW_SSID_BASEDEV", {})
-                ssid_record = data.get("DOT11_ADVERTISED_SSID", {})
-                
-                ap_data = {
-                    "kismet.device.base.macaddr": base_device.get("kismet.device.base.macaddr", ""),
-                    "kismet.device.base.name": ssid_record.get("ssid", ""),
-                    "kismet.device.base.last_time": base_device.get("kismet.device.base.last_time", ""),
-                    "kismet.device.base.signal_dbm": base_device.get("kismet.device.base.signal_dbm", None)
-                }
+            async for message in websocket:
+                data = json.loads(message)
+                if "DOT11_ADVERTISED_SSID" in data:
+                    base_device = data.get("DOT11_NEW_SSID_BASEDEV", {})
+                    ssid_record = data.get("DOT11_ADVERTISED_SSID", {})
+                    
+                    ap_data = {
+                        "kismet.device.base.macaddr": base_device.get("kismet.device.base.macaddr", ""),
+                        "kismet.device.base.name": ssid_record.get("ssid", ""),
+                        "kismet.device.base.last_time": base_device.get("kismet.device.base.last_time", ""),
+                        "kismet.device.base.signal_dbm": base_device.get("kismet.device.base.signal_dbm", None)
+                    }
 
-                log_access_point(ap_data)
+                    log_access_point(ap_data)
+    except asyncio.CancelledError:
+        print("Task was cancelled.")
+    except KeyboardInterrupt:
+        print("Script interrupted by user. Exiting...")
 
 async def main():
     try:
         await capture_kismet_data()
     except KeyboardInterrupt:
-        print("Script interrupted by user. Exiting...")
+        print("Main function interrupted. Exiting...")
 
 if __name__ == "__main__":
-    asyncio.run(main())
+    try:
+        asyncio.run(main())
+    except KeyboardInterrupt:
+        print("Program terminated.")
