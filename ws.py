@@ -24,16 +24,15 @@ session = Session()
 
 # Replace with your actual API token
 api_token = "your_actual_api_token_here"
-kismet_rest_url = "http://localhost:2501/devices/views/all_devices.json"  # Kismet REST API URL
+view_id = "phydot11_accesspoints"  # The view ID for IEEE802.11 Access Points
+kismet_rest_url = f"http://localhost:2501/devices/views/{view_id}/devices.json"
 
-# Function to process and log APs
 def log_access_point(ap_data):
     bssid = ap_data.get("kismet.device.base.macaddr", "")
     ssid = ap_data.get("kismet.device.base.name", "")
     last_seen = ap_data.get("kismet.device.base.last_time", "")
     signal_dbm = ap_data.get("kismet.device.base.signal_dbm", None)
 
-    # Print to console
     print(f"Found AP: BSSID={bssid}, SSID={ssid}, Last Seen={last_seen}, Signal={signal_dbm} dBm")
 
     ap = session.query(AccessPoint).filter_by(bssid=bssid).first()
@@ -46,24 +45,19 @@ def log_access_point(ap_data):
 
     session.commit()
 
-# Function to perform an initial sweep of existing APs
 def sweep_existing_aps():
     headers = {"Authorization": f"Token {api_token}"}
     response = requests.get(kismet_rest_url, headers=headers)
     if response.status_code == 200:
         devices = response.json()
         for device in devices:
-            if "kismet.device.base.type" in device and device["kismet.device.base.type"] == "Wi-Fi AP":
-                log_access_point(device)
+            log_access_point(device)
     else:
         print(f"Failed to fetch existing APs: {response.status_code}")
 
-# WebSocket connection and data processing
 async def capture_kismet_data():
-    # Perform an initial sweep to log existing APs
     sweep_existing_aps()
 
-    # Continue to capture new APs in real-time via WebSocket
     uri = f"ws://localhost:2501/eventbus/events.ws?KISMET={api_token}"
     
     async with websockets.connect(uri) as websocket:
