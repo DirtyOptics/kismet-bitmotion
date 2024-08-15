@@ -5,7 +5,7 @@ from sqlalchemy import create_engine, Column, Integer, String, Float
 from sqlalchemy.orm import declarative_base, sessionmaker
 
 # Database setup
-DATABASE_URL = "sqlite:///kismet_data.db"  # Adjust this path as needed
+DATABASE_URL = "sqlite:////home/db/kismet-bitmotion/kismet_data.db"  # Adjust this path as needed
 Base = declarative_base()
 
 class AccessPoint(Base):
