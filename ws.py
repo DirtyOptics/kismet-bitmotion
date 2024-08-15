@@ -5,7 +5,7 @@ import requests
 from sqlalchemy import create_engine, Column, Integer, String, Float
 from sqlalchemy.orm import declarative_base, sessionmaker
 
-# Adjusted to use a relative path
+# Database setup with an absolute path
 DATABASE_URL = "sqlite:///kismet_data.db"
 Base = declarative_base()
 
@@ -55,36 +55,36 @@ def sweep_existing_aps():
         print(f"Failed to fetch existing APs: {response.status_code}")
 
 async def capture_kismet_data():
+    sweep_existing_aps()
+
+    uri = f"ws://localhost:2501/eventbus/events.ws?KISMET={api_token}"
+    
+    async with websockets.connect(uri) as websocket:
+        subscribe_message = {
+            "SUBSCRIBE": "DOT11_ADVERTISED_SSID"
+        }
+        await websocket.send(json.dumps(subscribe_message))
+
+        async for message in websocket:
+            data = json.loads(message)
+            if "DOT11_ADVERTISED_SSID" in data:
+                base_device = data.get("DOT11_NEW_SSID_BASEDEV", {})
+                ssid_record = data.get("DOT11_ADVERTISED_SSID", {})
+                
+                ap_data = {
+                    "kismet.device.base.macaddr": base_device.get("kismet.device.base.macaddr", ""),
+                    "kismet.device.base.name": ssid_record.get("ssid", ""),
+                    "kismet.device.base.last_time": base_device.get("kismet.device.base.last_time", ""),
+                    "kismet.device.base.signal_dbm": base_device.get("kismet.device.base.signal_dbm", None)
+                }
+
+                log_access_point(ap_data)
+
+async def main():
     try:
-        sweep_existing_aps()
-
-        uri = f"ws://localhost:2501/eventbus/events.ws?KISMET={api_token}"
-        
-        async with websockets.connect(uri) as websocket:
-            subscribe_message = {
-                "SUBSCRIBE": "DOT11_ADVERTISED_SSID"
-            }
-            await websocket.send(json.dumps(subscribe_message))
-
-            async for message in websocket:
-                data = json.loads(message)
-                if "DOT11_ADVERTISED_SSID" in data:
-                    base_device = data.get("DOT11_NEW_SSID_BASEDEV", {})
-                    ssid_record = data.get("DOT11_ADVERTISED_SSID", {})
-                    
-                    ap_data = {
-                        "kismet.device.base.macaddr": base_device.get("kismet.device.base.macaddr", ""),
-                        "kismet.device.base.name": ssid_record.get("ssid", ""),
-                        "kismet.device.base.last_time": base_device.get("kismet.device.base.last_time", ""),
-                        "kismet.device.base.signal_dbm": base_device.get("kismet.device.base.signal_dbm", None)
-                    }
-
-                    log_access_point(ap_data)
+        await capture_kismet_data()
     except KeyboardInterrupt:
         print("Script interrupted by user. Exiting...")
-    finally:
-        # Perform any cleanup here if needed
-        pass
 
 if __name__ == "__main__":
-    asyncio.get_event_loop().run_until_complete(capture_kismet_data())
+    asyncio.run(main())
