@@ -69,8 +69,8 @@ def log_access_point(ap_data):
     gps_latitude = location_data.get("kismet.common.location.geopoint", [None, None])[1]
     gps_longitude = location_data.get("kismet.common.location.geopoint", [None, None])[0]
 
-    # Get signal strength
-    signal_dbm = ap_data.get("kismet.device.base.signal_dbm", None)
+    # Extract signal strength
+    signal_dbm = ap_data.get("kismet.device.base.signal", {}).get("kismet.common.signal.last_signal_dbm", None)
 
     first_seen = convert_time(ap_data.get("kismet.device.base.first_time", 0))
     last_seen = convert_time(ap_data.get("kismet.device.base.last_time", 0))
