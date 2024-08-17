@@ -1,6 +1,7 @@
 import asyncio
 import websockets
 import json
+import requests
 import yaml
 from datetime import datetime, timezone
 import pytz
