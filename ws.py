@@ -6,10 +6,11 @@ from datetime import datetime
 from sqlalchemy import create_engine, Column, Integer, String, Float
 from sqlalchemy.orm import declarative_base, sessionmaker
 
-# Load the API key from the config.json file
+# Load the API key and timezone from the config.json file
 with open('config.json') as config_file:
     config = json.load(config_file)
     api_token = config.get("api_token")
+    timezone = config.get("timezone", "local")  # Default to local time if not set
 
 # Database setup with an absolute path
 DATABASE_URL = "sqlite:///kismet_data.db"
@@ -31,6 +32,12 @@ session = Session()
 view_id = "phydot11_accesspoints"  # The view ID for IEEE802.11 Access Points
 kismet_rest_url = f"http://localhost:2501/devices/views/{view_id}/devices.json?KISMET={api_token}"
 
+def format_time(timestamp):
+    if timezone == "UTC":
+        return datetime.utcfromtimestamp(timestamp).strftime('%H:%M:%S %Y-%m-%d')
+    else:  # Default to local time
+        return datetime.fromtimestamp(timestamp).strftime('%H:%M:%S %Y-%m-%d')
+
 def log_access_point(ap_data):
     bssid = ap_data.get("kismet.device.base.macaddr", "")
     ssid = ap_data.get("kismet.device.base.name", "(unknown)")
@@ -39,9 +46,9 @@ def log_access_point(ap_data):
     if not ssid or ssid == bssid:
         ssid = "(hidden)"
     
-    # Convert the last seen time to a format with time first, then date
+    # Convert the last seen time to a format with time first, then date based on config
     last_seen_timestamp = ap_data.get("kismet.device.base.last_time", "")
-    last_seen = datetime.utcfromtimestamp(last_seen_timestamp).strftime('%H:%M:%S %Y-%m-%d')
+    last_seen = format_time(last_seen_timestamp)
     
     signal_dbm = ap_data.get("kismet.device.base.signal", {}).get("kismet.common.signal.last_signal", None)
 
