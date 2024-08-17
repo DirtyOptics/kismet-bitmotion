@@ -33,9 +33,15 @@ def log_access_point(ap_data):
     last_seen = ap_data.get("kismet.device.base.last_time", "")
     signal_dbm = None
 
+    # Debugging print statements
+    print(f"Debug: Raw AP Data: {ap_data}")
+    print(f"Debug: Attempting to extract SSID from 'dot11.advertisedssid.ssid'")
+    
     # Correctly access the SSID
     ssid = ap_data.get("DOT11_ADVERTISED_SSID", {}).get("dot11.advertisedssid.ssid", "(unknown)")
-
+    
+    print(f"Debug: Extracted SSID: {ssid}")
+    
     # Signal strength extraction
     signal_dbm = ap_data.get("kismet.device.base.signal", {}).get("kismet.common.signal.last_signal", None)
 
