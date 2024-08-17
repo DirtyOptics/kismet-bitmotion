@@ -14,9 +14,9 @@ with open('config.yaml', 'r') as config_file:
 
 api_token = config.get("api_token")
 timezone_setting = config.get("timezone", "local")
+database_url = config.get("database_url", "sqlite:///kismet-bitmotion/kismet_data.db")
 
-# Database setup with an absolute path
-DATABASE_URL = "sqlite:///kismet-bitmotion/kismet_data.db"
+# Database setup
 Base = declarative_base()
 
 class AccessPoint(Base):
@@ -33,7 +33,7 @@ class AccessPoint(Base):
     first_seen = Column(String)
     last_seen = Column(String)
 
-engine = create_engine(DATABASE_URL)
+engine = create_engine(database_url)
 Base.metadata.create_all(engine)
 Session = sessionmaker(bind=engine)
 session = Session()
