@@ -61,8 +61,12 @@ def log_access_point(ap_data):
     num_clients = len(ap_data.get("dot11.device.associated_client_map", {}))
     bssid = ap_data.get("kismet.device.base.macaddr", "")
     manufacturer = ap_data.get("kismet.device.base.manuf", "")
-    gps_latitude = ap_data.get("kismet.device.base.location", {}).get("kismet.common.location.lat", None)
-    gps_longitude = ap_data.get("kismet.device.base.location", {}).get("kismet.common.location.lon", None)
+    
+    # Extract GPS data
+    location_data = ap_data.get("kismet.device.base.location", {}).get("kismet.common.location.avg_loc", {})
+    gps_latitude = location_data.get("kismet.common.location.geopoint", [None, None])[1]
+    gps_longitude = location_data.get("kismet.common.location.geopoint", [None, None])[0]
+
     first_seen = convert_time(ap_data.get("kismet.device.base.first_time", 0))
     last_seen = convert_time(ap_data.get("kismet.device.base.last_time", 0))
 
