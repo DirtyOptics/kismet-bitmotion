@@ -33,8 +33,14 @@ def log_access_point(ap_data):
     last_seen = ap_data.get("kismet.device.base.last_time", "")
     signal_dbm = None
 
-    # Access the correct fields for SSID and signal strength
+    # Try to extract SSID from the various possible locations
     ssid = ap_data.get("DOT11_ADVERTISED_SSID", {}).get("dot11.advertisedssid.ssid", "(unknown)")
+    if not ssid or ssid == "":
+        ssid = ap_data.get("DOT11_NEW_SSID_BASEDEV", {}).get("kismet.device.base.commonname", "(unknown)")
+    if not ssid or ssid == "":
+        ssid = "(hidden)"
+
+    # Signal strength extraction
     signal_dbm = ap_data.get("kismet.device.base.signal", {}).get("kismet.common.signal.last_signal", None)
 
     print(f"Found AP: BSSID={bssid}, SSID={ssid}, Last Seen={last_seen}, Signal={signal_dbm} dBm")
