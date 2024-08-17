@@ -34,6 +34,10 @@ kismet_rest_url = f"http://localhost:2501/devices/views/{view_id}/devices.json?K
 def log_access_point(ap_data):
     bssid = ap_data.get("kismet.device.base.macaddr", "")
     ssid = ap_data.get("kismet.device.base.name", "(unknown)")
+
+    # Mark SSID as hidden if it's empty or the same as BSSID
+    if not ssid or ssid == bssid:
+        ssid = "(hidden)"
     
     # Convert the last seen time to a format with time first, then date
     last_seen_timestamp = ap_data.get("kismet.device.base.last_time", "")
