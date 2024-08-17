@@ -13,9 +13,9 @@ class AccessPoint(Base):
     __tablename__ = 'access_points'
     id = Column(Integer, primary_key=True)
     bssid = Column(String, unique=True)
-    ssid = Column(String)
+    ssid = Column(String, nullable=True)
     last_seen = Column(String)
-    signal_dbm = Column(Float)
+    signal_dbm = Column(Float, nullable=True)
 
 engine = create_engine(DATABASE_URL)
 Base.metadata.create_all(engine)
@@ -29,9 +29,15 @@ kismet_rest_url = f"http://localhost:2501/devices/views/{view_id}/devices.json?K
 
 def log_access_point(ap_data):
     bssid = ap_data.get("kismet.device.base.macaddr", "")
-    ssid = ap_data.get("kismet.device.base.name", "")
+    ssid = ap_data.get("kismet.device.base.name", "(unknown)")
     last_seen = ap_data.get("kismet.device.base.last_time", "")
-    signal_dbm = ap_data.get("kismet.device.base.signal_dbm", None)
+    signal_dbm = None
+
+    # Access the correct fields for signal strength, if available
+    if "kismet.device.base.signal" in ap_data:
+        signal_info = ap_data["kismet.device.base.signal"]
+        if signal_info and isinstance(signal_info, dict):
+            signal_dbm = signal_info.get("kismet.common.signal.last_signal_dbm", None)
 
     print(f"Found AP: BSSID={bssid}, SSID={ssid}, Last Seen={last_seen}, Signal={signal_dbm} dBm")
 
@@ -71,12 +77,12 @@ async def capture_kismet_data():
                 if "DOT11_ADVERTISED_SSID" in data:
                     base_device = data.get("DOT11_NEW_SSID_BASEDEV", {})
                     ssid_record = data.get("DOT11_ADVERTISED_SSID", {})
-                    
+
                     ap_data = {
                         "kismet.device.base.macaddr": base_device.get("kismet.device.base.macaddr", ""),
-                        "kismet.device.base.name": ssid_record.get("ssid", ""),
+                        "kismet.device.base.name": ssid_record.get("ssid", "(unknown)"),
                         "kismet.device.base.last_time": base_device.get("kismet.device.base.last_time", ""),
-                        "kismet.device.base.signal_dbm": base_device.get("kismet.device.base.signal_dbm", None)
+                        "kismet.device.base.signal": base_device.get("kismet.device.base.signal", {})
                     }
 
                     log_access_point(ap_data)
