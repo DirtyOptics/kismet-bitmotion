@@ -44,11 +44,16 @@ view_id = "phydot11_accesspoints"  # The view ID for IEEE802.11 Access Points
 kismet_rest_url = f"http://localhost:2501/devices/views/{view_id}/devices.json?KISMET={api_token}"
 
 def convert_time(timestamp):
+    # Convert timestamp to a datetime object
     dt = datetime.fromtimestamp(timestamp)
+
+    # Apply timezone based on configuration
     if timezone_setting == "UTC":
         dt = dt.replace(tzinfo=timezone.utc)
     elif timezone_setting == "local":
-        dt = dt.astimezone()
+        dt = dt.astimezone()  # Convert to local timezone
+
+    # Format time as "Time Date"
     return dt.strftime("%H:%M:%S %d-%m-%Y")
 
 def log_access_point(ap_data):
@@ -58,38 +63,62 @@ def log_access_point(ap_data):
     num_clients = len(ap_data.get("dot11.device.associated_client_map", {}))
     bssid = ap_data.get("kismet.device.base.macaddr", "")
     manufacturer = ap_data.get("kismet.device.base.manuf", "")
-
+    
     # Extract GPS data
     location_data = ap_data.get("kismet.device.base.location", {}).get("kismet.common.location.avg_loc", {})
     gps_latitude = location_data.get("kismet.common.location.geopoint", [None, None])[1]
     gps_longitude = location_data.get("kismet.common.location.geopoint", [None, None])[0]
-    signal_dbm = ap_data.get("kismet.device.base.signal", {}).get("kismet.common.signal.last_signal", None)
 
     first_seen = convert_time(ap_data.get("kismet.device.base.first_time", 0))
     last_seen = convert_time(ap_data.get("kismet.device.base.last_time", 0))
 
+    # Extract signal strength
+    signal_dbm = ap_data.get("kismet.device.base.signal", {}).get("kismet.common.signal.last_signal", None)
+
+    # Generate a timestamp for when this observation was made
+    observation_timestamp = datetime.now().strftime("%H:%M:%S %d-%m-%Y")
+
+    # Check if SSID is hidden or matches the BSSID
     if not ssid or ssid == bssid:
         ssid = "(hidden)"
 
     print(f"SSID: {ssid}, Encryption: {encryption_type}, Channel: {channel}, Clients: {num_clients}, "
           f"BSSID: {bssid}, Manufacturer: {manufacturer}, Latitude: {gps_latitude}, Longitude: {gps_longitude}, "
-          f"First Seen: {first_seen}, Last Seen: {last_seen}, Signal: {signal_dbm}, Timestamp: {datetime.now().strftime('%H:%M:%S %d-%m-%Y')}")
+          f"First Seen: {first_seen}, Last Seen: {last_seen}, Signal: {signal_dbm}, Timestamp: {observation_timestamp}")
 
-    ap_observation = APObservation(
-        ssid=ssid,
-        encryption_type=encryption_type,
-        channel=channel,
-        num_clients=num_clients,
-        bssid=bssid,
-        manufacturer=manufacturer,
-        gps_latitude=gps_latitude,
-        gps_longitude=gps_longitude,
-        signal_dbm=signal_dbm,
-        first_seen=first_seen,
-        last_seen=last_seen,
-        timestamp=datetime.now().strftime('%H:%M:%S %d-%m-%Y')
-    )
-    session.add(ap_observation)
+    # Check if the AP exists in the database
+    ap_observation = session.query(APObservation).filter_by(bssid=bssid).first()
+
+    if ap_observation:
+        # Update existing AP's data
+        ap_observation.ssid = ssid
+        ap_observation.encryption_type = encryption_type
+        ap_observation.channel = channel
+        ap_observation.num_clients = num_clients
+        ap_observation.manufacturer = manufacturer
+        ap_observation.gps_latitude = gps_latitude
+        ap_observation.gps_longitude = gps_longitude
+        ap_observation.signal_dbm = signal_dbm
+        ap_observation.last_seen = last_seen
+        ap_observation.timestamp = observation_timestamp
+    else:
+        # Insert a new observation if the AP doesn't exist in the database
+        ap_observation = APObservation(
+            ssid=ssid,
+            encryption_type=encryption_type,
+            channel=channel,
+            num_clients=num_clients,
+            bssid=bssid,
+            manufacturer=manufacturer,
+            gps_latitude=gps_latitude,
+            gps_longitude=gps_longitude,
+            signal_dbm=signal_dbm,
+            first_seen=first_seen,
+            last_seen=last_seen,
+            timestamp=observation_timestamp
+        )
+        session.add(ap_observation)
+
     session.commit()
 
 def sweep_existing_aps():
@@ -127,8 +156,8 @@ async def capture_kismet_data():
                     "kismet.device.base.channel": base_device.get("kismet.device.base.channel", ""),
                     "kismet.device.base.manuf": base_device.get("kismet.device.base.manuf", ""),
                     "kismet.device.base.location": base_device.get("kismet.device.base.location", {}),
-                    "dot11.device.associated_client_map": base_device.get("dot11.device.associated_client_map", {}),
-                    "kismet.device.base.signal": base_device.get("kismet.device.base.signal", {})
+                    "kismet.device.base.signal": base_device.get("kismet.device.base.signal", {}),
+                    "dot11.device.associated_client_map": base_device.get("dot11.device.associated_client_map", {})
                 }
 
                 log_access_point(ap_data)
