@@ -33,11 +33,9 @@ def log_access_point(ap_data):
     last_seen = ap_data.get("kismet.device.base.last_time", "")
     signal_dbm = None
 
-    # Access the correct fields for signal strength, if available
-    if "kismet.device.base.signal" in ap_data:
-        signal_info = ap_data["kismet.device.base.signal"]
-        if signal_info and isinstance(signal_info, dict):
-            signal_dbm = signal_info.get("kismet.common.signal.last_signal_dbm", None)
+    # Access the correct fields for SSID and signal strength
+    ssid = ap_data.get("DOT11_ADVERTISED_SSID", {}).get("dot11.advertisedssid.ssid", "(unknown)")
+    signal_dbm = ap_data.get("kismet.device.base.signal", {}).get("kismet.common.signal.last_signal", None)
 
     print(f"Found AP: BSSID={bssid}, SSID={ssid}, Last Seen={last_seen}, Signal={signal_dbm} dBm")
 
@@ -73,17 +71,16 @@ async def capture_kismet_data():
             await websocket.send(json.dumps(subscribe_message))
 
             async for message in websocket:
-                # Print the raw message data for debugging
-                print("Raw WebSocket Message:", message)
-
+                # Parse the JSON message
                 data = json.loads(message)
-                if "DOT11_ADVERTISED_SSID" in data:
-                    base_device = data.get("DOT11_NEW_SSID_BASEDEV", {})
+                
+                if "DOT11_ADVERTISED_SSID" in data and "DOT11_NEW_SSID_BASEDEV" in data:
                     ssid_record = data.get("DOT11_ADVERTISED_SSID", {})
+                    base_device = data.get("DOT11_NEW_SSID_BASEDEV", {})
 
                     ap_data = {
                         "kismet.device.base.macaddr": base_device.get("kismet.device.base.macaddr", ""),
-                        "kismet.device.base.name": ssid_record.get("ssid", "(unknown)"),
+                        "kismet.device.base.name": ssid_record.get("dot11.advertisedssid.ssid", "(unknown)"),
                         "kismet.device.base.last_time": base_device.get("kismet.device.base.last_time", ""),
                         "kismet.device.base.signal": base_device.get("kismet.device.base.signal", {})
                     }
