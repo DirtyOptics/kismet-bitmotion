@@ -73,6 +73,9 @@ async def capture_kismet_data():
             await websocket.send(json.dumps(subscribe_message))
 
             async for message in websocket:
+                # Print the raw message data for debugging
+                print("Raw WebSocket Message:", message)
+
                 data = json.loads(message)
                 if "DOT11_ADVERTISED_SSID" in data:
                     base_device = data.get("DOT11_NEW_SSID_BASEDEV", {})
