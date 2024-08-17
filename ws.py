@@ -21,10 +21,16 @@ Base = declarative_base()
 class AccessPoint(Base):
     __tablename__ = 'access_points'
     id = Column(Integer, primary_key=True)
-    bssid = Column(String, unique=True)
     ssid = Column(String)
+    encryption_type = Column(String)
+    channel = Column(String)
+    num_clients = Column(Integer)
+    bssid = Column(String, unique=True)
+    manufacturer = Column(String)
+    gps_latitude = Column(Float, nullable=True)
+    gps_longitude = Column(Float, nullable=True)
+    first_seen = Column(String)
     last_seen = Column(String)
-    signal_dbm = Column(Float)
 
 engine = create_engine(DATABASE_URL)
 Base.metadata.create_all(engine)
@@ -48,23 +54,49 @@ def convert_time(timestamp):
     return dt.strftime("%H:%M:%S %d-%m-%Y")
 
 def log_access_point(ap_data):
-    bssid = ap_data.get("kismet.device.base.macaddr", "")
     ssid = ap_data.get("kismet.device.base.name", "")
+    encryption_type = ap_data.get("kismet.device.base.crypt", "")
+    channel = ap_data.get("kismet.device.base.channel", "")
+    num_clients = len(ap_data.get("dot11.device.associated_client_map", {}))
+    bssid = ap_data.get("kismet.device.base.macaddr", "")
+    manufacturer = ap_data.get("kismet.device.base.manuf", "")
+    gps_latitude = ap_data.get("kismet.device.base.location", {}).get("kismet.common.location.lat", None)
+    gps_longitude = ap_data.get("kismet.device.base.location", {}).get("kismet.common.location.lon", None)
+    first_seen = convert_time(ap_data.get("kismet.device.base.first_time", 0))
     last_seen = convert_time(ap_data.get("kismet.device.base.last_time", 0))
-    signal_dbm = ap_data.get("kismet.device.base.signal", {}).get("kismet.common.signal.last_signal", None)
 
     # Check if SSID is hidden or matches the BSSID
     if not ssid or ssid == bssid:
         ssid = "(hidden)"
 
-    print(f"Found AP: BSSID={bssid}, SSID={ssid}, Last Seen={last_seen}, Signal={signal_dbm} dBm")
+    print(f"SSID: {ssid}, Encryption: {encryption_type}, Channel: {channel}, Clients: {num_clients}, "
+          f"BSSID: {bssid}, Manufacturer: {manufacturer}, Latitude: {gps_latitude}, Longitude: {gps_longitude}, "
+          f"First Seen: {first_seen}, Last Seen: {last_seen}")
 
     ap = session.query(AccessPoint).filter_by(bssid=bssid).first()
     if ap:
+        ap.ssid = ssid
+        ap.encryption_type = encryption_type
+        ap.channel = channel
+        ap.num_clients = num_clients
+        ap.manufacturer = manufacturer
+        ap.gps_latitude = gps_latitude
+        ap.gps_longitude = gps_longitude
+        ap.first_seen = first_seen
         ap.last_seen = last_seen
-        ap.signal_dbm = signal_dbm
     else:
-        ap = AccessPoint(bssid=bssid, ssid=ssid, last_seen=last_seen, signal_dbm=signal_dbm)
+        ap = AccessPoint(
+            ssid=ssid,
+            encryption_type=encryption_type,
+            channel=channel,
+            num_clients=num_clients,
+            bssid=bssid,
+            manufacturer=manufacturer,
+            gps_latitude=gps_latitude,
+            gps_longitude=gps_longitude,
+            first_seen=first_seen,
+            last_seen=last_seen
+        )
         session.add(ap)
 
     session.commit()
@@ -99,7 +131,12 @@ async def capture_kismet_data():
                     "kismet.device.base.macaddr": base_device.get("kismet.device.base.macaddr", ""),
                     "kismet.device.base.name": ssid_record.get("ssid", ""),
                     "kismet.device.base.last_time": base_device.get("kismet.device.base.last_time", ""),
-                    "kismet.device.base.signal": base_device.get("kismet.device.base.signal", None)
+                    "kismet.device.base.first_time": base_device.get("kismet.device.base.first_time", ""),
+                    "kismet.device.base.crypt": base_device.get("kismet.device.base.crypt", ""),
+                    "kismet.device.base.channel": base_device.get("kismet.device.base.channel", ""),
+                    "kismet.device.base.manuf": base_device.get("kismet.device.base.manuf", ""),
+                    "kismet.device.base.location": base_device.get("kismet.device.base.location", {}),
+                    "dot11.device.associated_client_map": base_device.get("dot11.device.associated_client_map", {})
                 }
 
                 log_access_point(ap_data)
