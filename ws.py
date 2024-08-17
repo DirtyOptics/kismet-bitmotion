@@ -6,6 +6,11 @@ from datetime import datetime
 from sqlalchemy import create_engine, Column, Integer, String, Float
 from sqlalchemy.orm import declarative_base, sessionmaker
 
+# Load the API key from the config.json file
+with open('config.json') as config_file:
+    config = json.load(config_file)
+    api_token = config.get("api_token")
+
 # Database setup with an absolute path
 DATABASE_URL = "sqlite:///kismet_data.db"
 Base = declarative_base()
@@ -23,8 +28,6 @@ Base.metadata.create_all(engine)
 Session = sessionmaker(bind=engine)
 session = Session()
 
-# Replace with your actual API token
-api_token = "insert token here"
 view_id = "phydot11_accesspoints"  # The view ID for IEEE802.11 Access Points
 kismet_rest_url = f"http://localhost:2501/devices/views/{view_id}/devices.json?KISMET={api_token}"
 
