@@ -2,7 +2,7 @@ import sqlite3
 from tabulate import tabulate  # This is a library to make the output more readable; install with `pip install tabulate`
 
 # Specify the path to your database
-database_path = "/path/to/your/kismet_data.db"  # Replace with the absolute path
+database_path = "/home/db/kismet-bitmotion/kismet_data.db"  # Replace with the absolute path
 
 # Connect to the SQLite database
 conn = sqlite3.connect(database_path)
