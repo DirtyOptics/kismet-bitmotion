@@ -29,20 +29,11 @@ kismet_rest_url = f"http://localhost:2501/devices/views/{view_id}/devices.json?K
 
 def log_access_point(ap_data):
     bssid = ap_data.get("kismet.device.base.macaddr", "")
+    
+    # Correctly accessing the SSID from the right field
     ssid = ap_data.get("kismet.device.base.name", "(unknown)")
+    
     last_seen = ap_data.get("kismet.device.base.last_time", "")
-    signal_dbm = None
-
-    # Debugging print statements
-    print(f"Debug: Raw AP Data: {ap_data}")
-    print(f"Debug: Attempting to extract SSID from 'dot11.advertisedssid.ssid'")
-    
-    # Correctly access the SSID
-    ssid = ap_data.get("DOT11_ADVERTISED_SSID", {}).get("dot11.advertisedssid.ssid", "(unknown)")
-    
-    print(f"Debug: Extracted SSID: {ssid}")
-    
-    # Signal strength extraction
     signal_dbm = ap_data.get("kismet.device.base.signal", {}).get("kismet.common.signal.last_signal", None)
 
     print(f"Found AP: BSSID={bssid}, SSID={ssid}, Last Seen={last_seen}, Signal={signal_dbm} dBm")
@@ -83,12 +74,11 @@ async def capture_kismet_data():
                 data = json.loads(message)
                 
                 if "DOT11_ADVERTISED_SSID" in data and "DOT11_NEW_SSID_BASEDEV" in data:
-                    ssid_record = data.get("DOT11_ADVERTISED_SSID", {})
                     base_device = data.get("DOT11_NEW_SSID_BASEDEV", {})
 
                     ap_data = {
                         "kismet.device.base.macaddr": base_device.get("kismet.device.base.macaddr", ""),
-                        "kismet.device.base.name": ssid_record.get("dot11.advertisedssid.ssid", "(unknown)"),
+                        "kismet.device.base.name": base_device.get("kismet.device.base.name", "(unknown)"),
                         "kismet.device.base.last_time": base_device.get("kismet.device.base.last_time", ""),
                         "kismet.device.base.signal": base_device.get("kismet.device.base.signal", {})
                     }
