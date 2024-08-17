@@ -31,6 +31,8 @@ class APObservation(Base):
     gps_latitude = Column(Float, nullable=True)
     gps_longitude = Column(Float, nullable=True)
     signal_dbm = Column(Float, nullable=True)
+    first_seen = Column(String)
+    last_seen = Column(String)
     timestamp = Column(String)
 
 engine = create_engine(database_url)
@@ -92,6 +94,8 @@ def log_access_point(ap_data):
         gps_latitude=gps_latitude,
         gps_longitude=gps_longitude,
         signal_dbm=ap_data.get("kismet.device.base.signal_dbm", None),
+        first_seen=first_seen,
+        last_seen=last_seen,
         timestamp=observation_timestamp
     )
     session.add(ap_observation)
