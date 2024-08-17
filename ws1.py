@@ -31,8 +31,6 @@ class APObservation(Base):
     gps_latitude = Column(Float, nullable=True)
     gps_longitude = Column(Float, nullable=True)
     signal_dbm = Column(Float, nullable=True)
-    first_seen = Column(String)
-    last_seen = Column(String)
     timestamp = Column(String)
 
 engine = create_engine(database_url)
@@ -69,6 +67,10 @@ def log_access_point(ap_data):
     gps_latitude = location_data.get("kismet.common.location.geopoint", [None, None])[1]
     gps_longitude = location_data.get("kismet.common.location.geopoint", [None, None])[0]
 
+    # Extract signal strength
+    signal_data = ap_data.get("kismet.device.base.signal", {})
+    signal_dbm = signal_data.get("kismet.common.signal.last_signal", None)
+
     first_seen = convert_time(ap_data.get("kismet.device.base.first_time", 0))
     last_seen = convert_time(ap_data.get("kismet.device.base.last_time", 0))
 
@@ -81,7 +83,7 @@ def log_access_point(ap_data):
 
     print(f"SSID: {ssid}, Encryption: {encryption_type}, Channel: {channel}, Clients: {num_clients}, "
           f"BSSID: {bssid}, Manufacturer: {manufacturer}, Latitude: {gps_latitude}, Longitude: {gps_longitude}, "
-          f"First Seen: {first_seen}, Last Seen: {last_seen}, Timestamp: {observation_timestamp}")
+          f"Signal: {signal_dbm} dBm, First Seen: {first_seen}, Last Seen: {last_seen}, Timestamp: {observation_timestamp}")
 
     # Insert the observation into the database
     ap_observation = APObservation(
@@ -93,9 +95,7 @@ def log_access_point(ap_data):
         manufacturer=manufacturer,
         gps_latitude=gps_latitude,
         gps_longitude=gps_longitude,
-        signal_dbm=ap_data.get("kismet.device.base.signal_dbm", None),
-        first_seen=first_seen,
-        last_seen=last_seen,
+        signal_dbm=signal_dbm,
         timestamp=observation_timestamp
     )
     session.add(ap_observation)
@@ -136,6 +136,7 @@ async def capture_kismet_data():
                     "kismet.device.base.channel": base_device.get("kismet.device.base.channel", ""),
                     "kismet.device.base.manuf": base_device.get("kismet.device.base.manuf", ""),
                     "kismet.device.base.location": base_device.get("kismet.device.base.location", {}),
+                    "kismet.device.base.signal": base_device.get("kismet.device.base.signal", {}),
                     "dot11.device.associated_client_map": base_device.get("dot11.device.associated_client_map", {})
                 }
 
