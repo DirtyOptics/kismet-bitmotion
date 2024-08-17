@@ -3,17 +3,18 @@ import websockets
 import json
 import requests
 import yaml
+from datetime import datetime, timezone
 import pytz
-from datetime import datetime
 from sqlalchemy import create_engine, Column, Integer, String, Float
 from sqlalchemy.orm import declarative_base, sessionmaker
 
-# Load configuration
-with open("config.yaml", "r") as config_file:
+# Load configuration from YAML file
+with open('config.yaml', 'r') as config_file:
     config = yaml.safe_load(config_file)
 
-DATABASE_URL = config["database_url"]
-timezone = config["timezone"]
+api_token = config.get("api_token")
+timezone_setting = config.get("timezone", "local")
+database_url = config.get("database_url", "sqlite:///kismet-bitmotion/kismet_data.db")
 
 # Database setup
 Base = declarative_base()
@@ -22,62 +23,77 @@ class AccessPoint(Base):
     __tablename__ = 'access_points'
     id = Column(Integer, primary_key=True)
     ssid = Column(String)
-    encryption = Column(String)
-    channel = Column(Integer)
-    clients = Column(Integer)
-    bssid = Column(String)
+    encryption_type = Column(String)
+    channel = Column(String)
+    num_clients = Column(Integer)
+    bssid = Column(String, unique=True)
     manufacturer = Column(String)
-    latitude = Column(Float)
-    longitude = Column(Float)
+    gps_latitude = Column(Float, nullable=True)
+    gps_longitude = Column(Float, nullable=True)
     first_seen = Column(String)
     last_seen = Column(String)
 
-engine = create_engine(DATABASE_URL)
+engine = create_engine(database_url)
 Base.metadata.create_all(engine)
 Session = sessionmaker(bind=engine)
 session = Session()
 
-# Replace with your actual API token
-api_token = config["api_token"]
 view_id = "phydot11_accesspoints"  # The view ID for IEEE802.11 Access Points
 kismet_rest_url = f"http://localhost:2501/devices/views/{view_id}/devices.json?KISMET={api_token}"
 
-def log_access_point(ap_data):
-    ssid = ap_data.get("kismet.device.base.name", "(hidden)")
-    encryption = ap_data.get("kismet.device.base.crypt", "Unknown")
-    channel = ap_data.get("kismet.device.base.channel", None)
-    clients = ap_data.get("dot11.device.num_associated_clients", 0)
-    bssid = ap_data.get("kismet.device.base.macaddr", "")
-    manufacturer = ap_data.get("kismet.device.base.manuf", "Unknown")
-    gps_data = ap_data.get("kismet.device.base.location", {})
-    latitude = gps_data.get("kismet.common.location.lat", None)
-    longitude = gps_data.get("kismet.common.location.lon", None)
-    first_seen = datetime.fromtimestamp(ap_data.get("kismet.device.base.first_time", 0), pytz.timezone(timezone)).strftime("%H:%M:%S %d-%m-%Y")
-    last_seen = datetime.fromtimestamp(ap_data.get("kismet.device.base.last_time", 0), pytz.timezone(timezone)).strftime("%H:%M:%S %d-%m-%Y")
+def convert_time(timestamp):
+    dt = datetime.fromtimestamp(timestamp)
+    if timezone_setting == "UTC":
+        dt = dt.replace(tzinfo=timezone.utc)
+    elif timezone_setting == "local":
+        dt = dt.astimezone()  # Convert to local timezone
+    return dt.strftime("%H:%M:%S %d-%m-%Y")
 
-    # Print the AP information
-    print(f"SSID: {ssid}, Encryption: {encryption}, Channel: {channel}, Clients: {clients}, BSSID: {bssid}, Manufacturer: {manufacturer}, Latitude: {latitude}, Longitude: {longitude}, First Seen: {first_seen}, Last Seen: {last_seen}")
+def log_access_point(ap_data):
+    ssid = ap_data.get("kismet.device.base.name", "")
+    encryption_type = ap_data.get("kismet.device.base.crypt", "")
+    channel = ap_data.get("kismet.device.base.channel", "")
+    num_clients = len(ap_data.get("dot11.device.associated_client_map", {}))
+    bssid = ap_data.get("kismet.device.base.macaddr", "")
+    manufacturer = ap_data.get("kismet.device.base.manuf", "")
+    
+    # Debug: Print the entire location object to see how lat/lon is structured
+    print("Debug: Location Data:", ap_data.get("kismet.device.base.location", {}))
+    
+    gps_latitude = ap_data.get("kismet.device.base.location", {}).get("kismet.common.location.last", {}).get("kismet.common.location.geopoint", [None, None])[1]
+    gps_longitude = ap_data.get("kismet.device.base.location", {}).get("kismet.common.location.last", {}).get("kismet.common.location.geopoint", [None, None])[0]
+    
+    first_seen = convert_time(ap_data.get("kismet.device.base.first_time", 0))
+    last_seen = convert_time(ap_data.get("kismet.device.base.last_time", 0))
+
+    if not ssid or ssid == bssid:
+        ssid = "(hidden)"
+
+    print(f"SSID: {ssid}, Encryption: {encryption_type}, Channel: {channel}, Clients: {num_clients}, "
+          f"BSSID: {bssid}, Manufacturer: {manufacturer}, Latitude: {gps_latitude}, Longitude: {gps_longitude}, "
+          f"First Seen: {first_seen}, Last Seen: {last_seen}")
 
     ap = session.query(AccessPoint).filter_by(bssid=bssid).first()
     if ap:
         ap.ssid = ssid
-        ap.encryption = encryption
+        ap.encryption_type = encryption_type
         ap.channel = channel
-        ap.clients = clients
+        ap.num_clients = num_clients
         ap.manufacturer = manufacturer
-        ap.latitude = latitude
-        ap.longitude = longitude
+        ap.gps_latitude = gps_latitude
+        ap.gps_longitude = gps_longitude
+        ap.first_seen = first_seen
         ap.last_seen = last_seen
     else:
         ap = AccessPoint(
             ssid=ssid,
-            encryption=encryption,
+            encryption_type=encryption_type,
             channel=channel,
-            clients=clients,
+            num_clients=num_clients,
             bssid=bssid,
             manufacturer=manufacturer,
-            latitude=latitude,
-            longitude=longitude,
+            gps_latitude=gps_latitude,
+            gps_longitude=gps_longitude,
             first_seen=first_seen,
             last_seen=last_seen
         )
@@ -85,7 +101,18 @@ def log_access_point(ap_data):
 
     session.commit()
 
+def sweep_existing_aps():
+    response = requests.get(kismet_rest_url)
+    if response.status_code == 200:
+        devices = response.json()
+        for device in devices:
+            log_access_point(device)
+    else:
+        print(f"Failed to fetch existing APs: {response.status_code}")
+
 async def capture_kismet_data():
+    sweep_existing_aps()
+
     uri = f"ws://localhost:2501/eventbus/events.ws?KISMET={api_token}"
     
     async with websockets.connect(uri) as websocket:
@@ -96,10 +123,6 @@ async def capture_kismet_data():
 
         async for message in websocket:
             data = json.loads(message)
-
-            # Print the raw message for debugging
-            print("Raw WebSocket Message:", json.dumps(data, indent=2))
-
             if "DOT11_ADVERTISED_SSID" in data:
                 base_device = data.get("DOT11_NEW_SSID_BASEDEV", {})
                 ssid_record = data.get("DOT11_ADVERTISED_SSID", {})
@@ -107,17 +130,24 @@ async def capture_kismet_data():
                 ap_data = {
                     "kismet.device.base.macaddr": base_device.get("kismet.device.base.macaddr", ""),
                     "kismet.device.base.name": ssid_record.get("ssid", ""),
-                    "kismet.device.base.first_time": base_device.get("kismet.device.base.first_time", ""),
                     "kismet.device.base.last_time": base_device.get("kismet.device.base.last_time", ""),
-                    "kismet.device.base.signal_dbm": base_device.get("kismet.device.base.signal_dbm", None),
-                    "kismet.device.base.crypt": base_device.get("kismet.device.base.crypt", "Unknown"),
-                    "kismet.device.base.channel": base_device.get("kismet.device.base.channel", None),
-                    "dot11.device.num_associated_clients": base_device.get("dot11.device.num_associated_clients", 0),
-                    "kismet.device.base.manuf": base_device.get("kismet.device.base.manuf", "Unknown"),
-                    "kismet.device.base.location": base_device.get("kismet.device.base.location", {})
+                    "kismet.device.base.first_time": base_device.get("kismet.device.base.first_time", ""),
+                    "kismet.device.base.crypt": base_device.get("kismet.device.base.crypt", ""),
+                    "kismet.device.base.channel": base_device.get("kismet.device.base.channel", ""),
+                    "kismet.device.base.manuf": base_device.get("kismet.device.base.manuf", ""),
+                    "kismet.device.base.location": base_device.get("kismet.device.base.location", {}),
+                    "dot11.device.associated_client_map": base_device.get("dot11.device.associated_client_map", {})
                 }
 
                 log_access_point(ap_data)
 
+async def main():
+    try:
+        await capture_kismet_data()
+    except asyncio.CancelledError:
+        print("Task was cancelled.")
+    except KeyboardInterrupt:
+        print("Script interrupted by user.")
+
 if __name__ == "__main__":
-    asyncio.run(capture_kismet_data())
+    asyncio.run(main())
