@@ -1,24 +1,27 @@
 import sqlite3
+from tabulate import tabulate  # This is a library to make the output more readable; install with `pip install tabulate`
 
-# Connect to the database
-conn = sqlite3.connect('kismet-bitmotion/kismet_data.db')
+# Specify the path to your database
+database_path = "/path/to/your/kismet_data.db"  # Replace with the absolute path
+
+# Connect to the SQLite database
+conn = sqlite3.connect(database_path)
 cursor = conn.cursor()
 
-# Specify the BSSID you want to query
-bssid_to_query = 'YOUR_BSSID_HERE'  # Replace with the BSSID you're interested in
-
-# Execute the query to fetch the necessary fields
+# Query to fetch the last 20 results, ordered by timestamp
 cursor.execute("""
     SELECT ssid, signal_dbm, gps_latitude, gps_longitude, timestamp 
     FROM ap_observations 
-    WHERE bssid = ?
-    ORDER BY timestamp ASC
-""", (bssid_to_query,))
+    ORDER BY id DESC 
+    LIMIT 20
+""")
 
-# Fetch and print the results
-observations = cursor.fetchall()
+# Fetch the results
+results = cursor.fetchall()
 
-for observation in observations:
-    print(f"SSID: {observation[0]}, Signal: {observation[1]} dBm, Latitude: {observation[2]}, Longitude: {observation[3]}, Timestamp: {observation[4]}")
+# Display the results using tabulate for a cleaner format
+headers = ["SSID", "Signal (dBm)", "Latitude", "Longitude", "Timestamp"]
+print(tabulate(results, headers=headers, tablefmt="pretty"))
 
+# Close the connection
 conn.close()
