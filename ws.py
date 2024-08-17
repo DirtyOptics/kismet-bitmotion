@@ -2,6 +2,7 @@ import asyncio
 import websockets
 import json
 import requests
+from datetime import datetime
 from sqlalchemy import create_engine, Column, Integer, String, Float
 from sqlalchemy.orm import declarative_base, sessionmaker
 
@@ -29,11 +30,12 @@ kismet_rest_url = f"http://localhost:2501/devices/views/{view_id}/devices.json?K
 
 def log_access_point(ap_data):
     bssid = ap_data.get("kismet.device.base.macaddr", "")
-    
-    # Correctly accessing the SSID from the right field
     ssid = ap_data.get("kismet.device.base.name", "(unknown)")
     
-    last_seen = ap_data.get("kismet.device.base.last_time", "")
+    # Convert the last seen time to a format with time first, then date
+    last_seen_timestamp = ap_data.get("kismet.device.base.last_time", "")
+    last_seen = datetime.utcfromtimestamp(last_seen_timestamp).strftime('%H:%M:%S %Y-%m-%d')
+    
     signal_dbm = ap_data.get("kismet.device.base.signal", {}).get("kismet.common.signal.last_signal", None)
 
     print(f"Found AP: BSSID={bssid}, SSID={ssid}, Last Seen={last_seen}, Signal={signal_dbm} dBm")
