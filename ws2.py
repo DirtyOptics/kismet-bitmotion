@@ -1,12 +1,11 @@
 import asyncio
-import websockets
-import json
 import requests
 import yaml
 from datetime import datetime, timezone
 import pytz
 from sqlalchemy import create_engine, Column, Integer, String, Float
 from sqlalchemy.orm import declarative_base, sessionmaker
+import time
 
 # Load configuration from YAML file
 with open('config.yaml', 'r') as config_file:
@@ -15,9 +14,6 @@ with open('config.yaml', 'r') as config_file:
 api_token = config.get("api_token")
 timezone_setting = config.get("timezone", "local")
 database_url = config.get("database_url", "sqlite:///kismet-bitmotion/kismet_data.db")
-
-# Debugging: Print the API token to ensure it is correct
-print(f"Using API Token: {api_token}")
 
 # Database setup
 Base = declarative_base()
@@ -73,22 +69,33 @@ def log_access_point(ap_data):
     print(f"SSID: {ssid}, Encryption: {encryption_type}, Channel: {channel}, Clients: {num_clients}, "
           f"BSSID: {bssid}, Manufacturer: {manufacturer}, Latitude: {gps_latitude}, Longitude: {gps_longitude}, "
           f"First Seen: {first_seen}, Last Seen: {last_seen}, Signal: {signal_dbm}, Timestamp: {observation_timestamp}")
-    ap_observation = APObservation(
-        ssid=ssid,
-        encryption_type=encryption_type,
-        channel=channel,
-        num_clients=num_clients,
-        bssid=bssid,
-        manufacturer=manufacturer,
-        gps_latitude=gps_latitude,
-        gps_longitude=gps_longitude,
-        signal_dbm=signal_dbm,
-        first_seen=first_seen,
-        last_seen=last_seen,
-        timestamp=observation_timestamp
-    )
-    session.add(ap_observation)
-    session.commit()
+    
+    # Check if this AP already exists in the database
+    last_observation = session.query(APObservation).filter_by(bssid=bssid).order_by(APObservation.timestamp.desc()).first()
+    
+    # Only add to the database if something has changed
+    if (not last_observation or
+        last_observation.signal_dbm != signal_dbm or
+        last_observation.gps_latitude != gps_latitude or
+        last_observation.gps_longitude != gps_longitude or
+        last_observation.last_seen != last_seen):
+        
+        ap_observation = APObservation(
+            ssid=ssid,
+            encryption_type=encryption_type,
+            channel=channel,
+            num_clients=num_clients,
+            bssid=bssid,
+            manufacturer=manufacturer,
+            gps_latitude=gps_latitude,
+            gps_longitude=gps_longitude,
+            signal_dbm=signal_dbm,
+            first_seen=first_seen,
+            last_seen=last_seen,
+            timestamp=observation_timestamp
+        )
+        session.add(ap_observation)
+        session.commit()
 
 def sweep_existing_aps():
     response = requests.get(kismet_rest_url)
@@ -99,36 +106,14 @@ def sweep_existing_aps():
     else:
         print(f"Failed to fetch existing APs: {response.status_code}")
 
-async def capture_kismet_data():
-    sweep_existing_aps()
-    uri = f"ws://localhost:2501/eventbus/events.ws?KISMET={api_token}"
-    async with websockets.connect(uri) as websocket:
-        subscribe_message = {
-            "SUBSCRIBE": "DOT11_ADVERTISED_SSID"
-        }
-        await websocket.send(json.dumps(subscribe_message))
-        async for message in websocket:
-            data = json.loads(message)
-            if "DOT11_ADVERTISED_SSID" in data:
-                base_device = data.get("DOT11_NEW_SSID_BASEDEV", {})
-                ssid_record = data.get("DOT11_ADVERTISED_SSID", {})
-                ap_data = {
-                    "kismet.device.base.macaddr": base_device.get("kismet.device.base.macaddr", ""),
-                    "kismet.device.base.name": ssid_record.get("ssid", ""),
-                    "kismet.device.base.last_time": base_device.get("kismet.device.base.last_time", ""),
-                    "kismet.device.base.first_time": base_device.get("kismet.device.base.first_time", ""),
-                    "kismet.device.base.crypt": base_device.get("kismet.device.base.crypt", ""),
-                    "kismet.device.base.channel": base_device.get("kismet.device.base.channel", ""),
-                    "kismet.device.base.manuf": base_device.get("kismet.device.base.manuf", ""),
-                    "kismet.device.base.location": base_device.get("kismet.device.base.location", {}),
-                    "kismet.device.base.signal": base_device.get("kismet.device.base.signal", {}),
-                    "dot11.device.associated_client_map": base_device.get("dot11.device.associated_client_map", {})
-                }
-                log_access_point(ap_data)
+async def periodic_update(interval=5):
+    while True:
+        sweep_existing_aps()
+        await asyncio.sleep(interval)
 
 async def main():
     try:
-        await capture_kismet_data()
+        await periodic_update(interval=5)
     except asyncio.CancelledError:
         print("Task was cancelled.")
     except KeyboardInterrupt:
