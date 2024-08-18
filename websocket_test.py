@@ -1,31 +1,93 @@
-import csv
-import json
-import websockets
 import asyncio
+import websockets
+import json
+import csv
+import logging
+from datetime import datetime
 
-async def websocket_listener():
-    websocket_url = 'ws://localhost:2501/eventbus/events.ws?KISMET=D470660EF5CB6466F4B8143B204F8816'  # Replace with your WebSocket URL
-    
-    with open('output.csv', mode='w', newline='') as file:
-        writer = csv.writer(file)
-        # Assuming these are the correct headings based on your needs
-        writer.writerow(['SSID', 'Signal Strength', 'Last Seen', 'Lat', 'Lon'])
+# Configure logging
+logging.basicConfig(level=logging.INFO)
 
-        async with websockets.connect(websocket_url) as websocket:
-            while True:
+# WebSocket URL
+websocket_url = 'ws://localhost:2501/eventbus/events.ws?KISMET=D470660EF5CB6466F4B8143B204F8816'
+
+# CSV file setup
+csv_filename = 'kismet_data.csv'
+csv_columns = [
+    'SSID', 'Encryption', 'Channel', 'NumClients', 
+    'BSSID', 'Manufacturer', 'GPSLatitude', 'GPSLongitude', 
+    'SignalStrength', 'FirstSeen', 'LastSeen', 'Timestamp'
+]
+
+# Ensure the CSV file is ready
+with open(csv_filename, 'w', newline='') as csvfile:
+    writer = csv.DictWriter(csvfile, fieldnames=csv_columns)
+    writer.writeheader()
+
+async def kismet_listener():
+    async with websockets.connect(websocket_url) as websocket:
+        while True:
+            try:
+                # Receive a message from Kismet
                 message = await websocket.recv()
+                logging.info(f"Received message: {message}")
+
+                # Parse the JSON message
                 data = json.loads(message)
-                
-                # Extract necessary fields (modify these keys based on your data)
-                ssid = data.get('SSID')
-                signal_strength = data.get('signal_strength')
-                last_seen = data.get('last_seen')
-                lat = data.get('lat')
-                lon = data.get('lon')
+                logging.info(f"Parsed JSON data: {data}")
 
-                # Only write rows that have all the necessary data
-                if ssid and signal_strength and last_seen and lat and lon:
-                    writer.writerow([ssid, signal_strength, last_seen, lat, lon])
-                    print(f"Data written to CSV: {[ssid, signal_strength, last_seen, lat, lon]}")
+                # Check if the message contains relevant data
+                if 'fields' in data:
+                    fields = data['fields']
+                    logging.info(f"Fields found: {fields}")
 
-asyncio.run(websocket_listener())
+                    # Extract relevant fields
+                    ssid = fields.get('kismet.device.base.name', 'Unknown')
+                    encryption = ', '.join(fields.get('kismet.device.base.crypt', []))
+                    channel = fields.get('kismet.device.base.channel', 'Unknown')
+                    num_clients = fields.get('kismet.device.base.clients', 0)
+                    bssid = fields.get('kismet.device.base.macaddr', 'Unknown')
+                    manufacturer = fields.get('kismet.device.base.manuf', 'Unknown')
+                    gps_lat = fields.get('kismet.device.base.location', {}).get('kismet.common.location.lat', 'Unknown')
+                    gps_lon = fields.get('kismet.device.base.location', {}).get('kismet.common.location.lon', 'Unknown')
+                    signal_strength = fields.get('kismet.device.base.signal.last_signal', 'Unknown')
+                    first_seen = fields.get('kismet.device.base.first_time', 'Unknown')
+                    last_seen = fields.get('kismet.device.base.last_time', 'Unknown')
+                    timestamp = datetime.now().isoformat()
+
+                    # Prepare the row for the CSV file
+                    row = {
+                        'SSID': ssid,
+                        'Encryption': encryption,
+                        'Channel': channel,
+                        'NumClients': num_clients,
+                        'BSSID': bssid,
+                        'Manufacturer': manufacturer,
+                        'GPSLatitude': gps_lat,
+                        'GPSLongitude': gps_lon,
+                        'SignalStrength': signal_strength,
+                        'FirstSeen': first_seen,
+                        'LastSeen': last_seen,
+                        'Timestamp': timestamp
+                    }
+                    logging.info(f"Writing row to CSV: {row}")
+
+                    # Write the row to the CSV file
+                    with open(csv_filename, 'a', newline='') as csvfile:
+                        writer = csv.DictWriter(csvfile, fieldnames=csv_columns)
+                        writer.writerow(row)
+
+            except websockets.ConnectionClosed:
+                logging.error("Connection closed, retrying...")
+                break
+            except json.JSONDecodeError:
+                logging.error("Failed to decode JSON, skipping this message.")
+            except Exception as e:
+                logging.error(f"Unexpected error: {e}")
+
+async def main():
+    while True:
+        await kismet_listener()
+
+# Run the WebSocket listener
+asyncio.run(main())
