@@ -20,4 +20,3 @@ async def listen_to_kismet():
             break  # This break is correctly inside the loop now
 
 asyncio.run(listen_to_kismet())
-
