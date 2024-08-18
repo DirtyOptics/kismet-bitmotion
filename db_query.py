@@ -5,7 +5,7 @@ from tabulate import tabulate  # This is a library to make the output more reada
 # Specify the path to your database
 database_path = "/home/db/kismet-bitmotion/kismet_data.db"  # Replace with the absolute path
 
-def fetch_latest_observations(limit=20, retry_attempts=5, retry_delay=1):
+def fetch_latest_observations(limit=50, retry_attempts=5, retry_delay=1):
     attempt = 0
     while attempt < retry_attempts:
         try:
