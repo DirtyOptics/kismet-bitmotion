@@ -57,7 +57,7 @@ def convert_time(timestamp):
     return dt.strftime("%H:%M:%S %d-%m-%Y")
 
 def log_access_point(ap_data):
-    ssid = ap_data.get("dot11.advertisedssid.ssid", "")
+    ssid = ap_data.get("kismet.device.base.name", "")
     encryption_type = ap_data.get("kismet.device.base.crypt", "")
     channel = ap_data.get("kismet.device.base.channel", "")
     num_clients = len(ap_data.get("dot11.device.associated_client_map", {}))
@@ -86,39 +86,22 @@ def log_access_point(ap_data):
           f"BSSID: {bssid}, Manufacturer: {manufacturer}, Latitude: {gps_latitude}, Longitude: {gps_longitude}, "
           f"First Seen: {first_seen}, Last Seen: {last_seen}, Signal: {signal_dbm}, Timestamp: {observation_timestamp}")
 
-    # Check if the AP exists in the database
-    ap_observation = session.query(APObservation).filter_by(bssid=bssid).first()
-
-    if ap_observation:
-        # Update existing AP's data
-        ap_observation.ssid = ssid
-        ap_observation.encryption_type = encryption_type
-        ap_observation.channel = channel
-        ap_observation.num_clients = num_clients
-        ap_observation.manufacturer = manufacturer
-        ap_observation.gps_latitude = gps_latitude
-        ap_observation.gps_longitude = gps_longitude
-        ap_observation.signal_dbm = signal_dbm
-        ap_observation.last_seen = last_seen
-        ap_observation.timestamp = observation_timestamp
-    else:
-        # Insert a new observation if the AP doesn't exist in the database
-        ap_observation = APObservation(
-            ssid=ssid,
-            encryption_type=encryption_type,
-            channel=channel,
-            num_clients=num_clients,
-            bssid=bssid,
-            manufacturer=manufacturer,
-            gps_latitude=gps_latitude,
-            gps_longitude=gps_longitude,
-            signal_dbm=signal_dbm,
-            first_seen=first_seen,
-            last_seen=last_seen,
-            timestamp=observation_timestamp
-        )
-        session.add(ap_observation)
-
+    # Insert a new observation into the database with a unique timestamp
+    ap_observation = APObservation(
+        ssid=ssid,
+        encryption_type=encryption_type,
+        channel=channel,
+        num_clients=num_clients,
+        bssid=bssid,
+        manufacturer=manufacturer,
+        gps_latitude=gps_latitude,
+        gps_longitude=gps_longitude,
+        signal_dbm=signal_dbm,
+        first_seen=first_seen,
+        last_seen=last_seen,
+        timestamp=observation_timestamp
+    )
+    session.add(ap_observation)
     session.commit()
 
 def sweep_existing_aps():
@@ -149,7 +132,7 @@ async def capture_kismet_data():
                 
                 ap_data = {
                     "kismet.device.base.macaddr": base_device.get("kismet.device.base.macaddr", ""),
-                    "dot11.advertisedssid.ssid": ssid_record.get("dot11.advertisedssid.ssid", ""),
+                    "kismet.device.base.name": ssid_record.get("ssid", ""),
                     "kismet.device.base.last_time": base_device.get("kismet.device.base.last_time", ""),
                     "kismet.device.base.first_time": base_device.get("kismet.device.base.first_time", ""),
                     "kismet.device.base.crypt": base_device.get("kismet.device.base.crypt", ""),
