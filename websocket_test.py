@@ -10,13 +10,18 @@ async def listen_to_kismet():
 
     async with websockets.connect(websocket_url) as websocket:
         print("Connected to Kismet WebSocket")
-        
+
         while True:
             try:
+                # Receive message from the WebSocket
                 message = await websocket.recv()
-                print("Received:", message)
+                # Print the raw message received from the Kismet WebSocket
+                print("Raw data received:", message)
+
             except websockets.exceptions.ConnectionClosed as e:
                 print(f"WebSocket connection closed: {e}")
                 break
+            except Exception as e:
+                print(f"An error occurred: {e}")
 
 asyncio.run(listen_to_kismet())
