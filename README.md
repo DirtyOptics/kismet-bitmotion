@@ -30,3 +30,15 @@ sudo chmod -R u+rwX /home/user/kismet-bitmotion
 ```
 pip install -r requirements.txt
 ```
+
+### DB NOTES
+
+PostgreSQL 14
+Installed locally to Grafana
+Config.yaml has the url to db.
+Create db, username/pw
+
+
+
+
+
