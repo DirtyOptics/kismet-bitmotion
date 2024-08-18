@@ -10,10 +10,10 @@ async def listen_to_kismet():
     websocket_url = 'ws://localhost:2501/eventbus/events.ws?KISMET=D470660EF5CB6466F4B8143B204F8816'  # Replace with your WebSocket URL
 
     async with websockets.connect(websocket_url) as websocket:
-        # Subscribe to all events
-        subscription_message = '{"Kismet": {"subscribe": ["*"]}}'
+        # Subscribe to dot11.advertised_ssid events
+        subscription_message = '{"Kismet": {"subscribe": ["dot11.advertised_ssid"]}}'
         await websocket.send(subscription_message)
-        print("Subscribed to all events")
+        print("Subscribed to dot11.advertised_ssid events")
 
         try:
             while True:
@@ -21,13 +21,9 @@ async def listen_to_kismet():
                 print("Raw message received:", message)
                 data = json.loads(message)
 
-                # Now try to filter for DOT11_ADVERTISED_SSID
-                if "DOT11_ADVERTISED_SSID" in data:
-                    base_device = data.get("DOT11_NEW_SSID_BASEDEV", {})
-                    ssid_record = data.get("DOT11_ADVERTISED_SSID", {})
-
+                if "dot11.advertised_ssid" in data:
+                    ssid_record = data.get("dot11.advertised_ssid", {})
                     print(f"SSID: {ssid_record.get('ssid', 'N/A')}")
-                    print(f"Base Device: {base_device}")
                     print(f"Record: {ssid_record}")
 
         except websockets.exceptions.ConnectionClosed as e:
