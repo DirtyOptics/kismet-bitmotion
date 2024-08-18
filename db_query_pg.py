@@ -10,7 +10,7 @@ with open('config.yaml', 'r') as config_file:
 # Get the database URL from the config file
 database_url = config.get("database_url")
 
-def fetch_latest_observations(limit=20, retry_attempts=5, retry_delay=1):
+def fetch_latest_observations(limit=50, retry_attempts=5, retry_delay=1):
     attempt = 0
     while attempt < retry_attempts:
         try:
