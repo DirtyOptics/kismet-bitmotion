@@ -43,7 +43,7 @@ async def process_ap_data(ap_data):
         ])
 
 async def connect_to_websocket():
-    websocket_url = 'ws://localhost:2501/stream/device/all_devices'  # Replace with your WebSocket URL
+    websocket_url = 'ws://localhost:2501/eventbus/events.ws?KISMET=<D470660EF5CB6466F4B8143B204F8816>'  # Replace with your WebSocket URL
     async with websockets.connect(websocket_url) as websocket:
         while True:
             ap_data = await websocket.recv()
