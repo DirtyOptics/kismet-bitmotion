@@ -17,6 +17,5 @@ async def listen_to_kismet():
             print("No data received within the last 10 seconds, waiting...")
         except websockets.ConnectionClosed:
             print("WebSocket connection closed")
-            break  # This break is correctly inside the loop now
 
 asyncio.run(listen_to_kismet())
