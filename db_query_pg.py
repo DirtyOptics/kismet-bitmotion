@@ -44,7 +44,7 @@ def fetch_latest_observations(limit=50, retry_attempts=5, retry_delay=1):
     print("Failed to fetch data after multiple attempts.")
     return []
 
-def monitor_database(interval=5, limit=20):
+def monitor_database(interval=5, limit=50):
     try:
         while True:
             # Fetch the latest observations
@@ -66,4 +66,4 @@ def monitor_database(interval=5, limit=20):
         print("Monitoring stopped by user.")
 
 if __name__ == "__main__":
-    monitor_database(interval=5, limit=20)
+    monitor_database(interval=5, limit=50)
