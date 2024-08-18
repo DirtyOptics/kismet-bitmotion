@@ -6,3 +6,4 @@ pyyaml
 pytz
 prettytable
 tabulate
+psycopg2
