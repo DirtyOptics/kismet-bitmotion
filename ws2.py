@@ -23,7 +23,7 @@ class APObservation(Base):
     last_seen = Column(String)
     timestamp = Column(String)
 
-engine = create_engine('sqlite:///kismet-bitmotion/kismet_data.db')
+engine = create_engine('sqlite:////home/db/kismet-bitmotion/kismet_data.db')
 Base.metadata.create_all(engine)
 Session = sessionmaker(bind=engine)
 session = Session()
