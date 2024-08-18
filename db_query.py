@@ -1,28 +1,48 @@
 import sqlite3
-from tabulate import tabulate
+import time
+from tabulate import tabulate  # This is a library to make the output more readable; install with `pip install tabulate`
 
 # Specify the path to your database
 database_path = "/home/db/kismet-bitmotion/kismet_data.db"  # Replace with the absolute path
 
-# Connect to the SQLite database
-conn = sqlite3.connect(database_path)
-cursor = conn.cursor()
+def fetch_latest_observations(limit=20):
+    # Connect to the SQLite database
+    conn = sqlite3.connect(database_path)
+    cursor = conn.cursor()
 
-# Query to fetch observations for a specific BSSID over time
-cursor.execute("""
-    SELECT ssid, bssid, signal_dbm, gps_latitude, gps_longitude, timestamp 
-    FROM ap_observations 
-    WHERE bssid = ? 
-    ORDER BY timestamp DESC 
-    LIMIT 20
-""", ('74:83:C2:B2:D2:5D',))  # Replace with the BSSID you're interested in
+    # Query to fetch the last `limit` results, ordered by timestamp
+    cursor.execute("""
+        SELECT ssid, signal_dbm, gps_latitude, gps_longitude, timestamp 
+        FROM ap_observations 
+        ORDER BY id DESC 
+        LIMIT ?
+    """, (limit,))
 
-# Fetch the results
-results = cursor.fetchall()
+    # Fetch the results
+    results = cursor.fetchall()
+    
+    # Close the connection
+    conn.close()
 
-# Display the results using tabulate for a cleaner format
-headers = ["SSID", "BSSID", "Signal (dBm)", "Latitude", "Longitude", "Timestamp"]
-print(tabulate(results, headers=headers, tablefmt="pretty"))
+    return results
 
-# Close the connection
-conn.close()
+def monitor_database(interval=5, limit=20):
+    try:
+        while True:
+            # Fetch the latest observations
+            results = fetch_latest_observations(limit=limit)
+
+            # Clear the terminal (optional, for better readability)
+            print("\033c", end="")
+
+            # Display the results using tabulate for a cleaner format
+            headers = ["SSID", "Signal (dBm)", "Latitude", "Longitude", "Timestamp"]
+            print(tabulate(results, headers=headers, tablefmt="pretty"))
+
+            # Wait for the specified interval before querying again
+            time.sleep(interval)
+    except KeyboardInterrupt:
+        print("Monitoring stopped by user.")
+
+if __name__ == "__main__":
+    monitor_database(interval=5, limit=20)
