@@ -10,7 +10,7 @@ async def listen_to_kismet():
     websocket_url = 'ws://localhost:2501/eventbus/events.ws?KISMET=D470660EF5CB6466F4B8143B204F8816'  # Replace with your WebSocket URL
 
     async with websockets.connect(websocket_url) as websocket:
-        # Subscribe to all events, as there might not be a direct event like dot11.device
+        # Subscribe to all events
         subscription_message = '{"Kismet": {"subscribe": ["*"]}}'
         await websocket.send(subscription_message)
         print("Subscribed to all events")
@@ -18,9 +18,10 @@ async def listen_to_kismet():
         try:
             while True:
                 message = await websocket.recv()
+                print("Raw message received:", message)
                 data = json.loads(message)
 
-                # Check for DOT11_ADVERTISED_SSID in the received data
+                # Now try to filter for DOT11_ADVERTISED_SSID
                 if "DOT11_ADVERTISED_SSID" in data:
                     base_device = data.get("DOT11_NEW_SSID_BASEDEV", {})
                     ssid_record = data.get("DOT11_ADVERTISED_SSID", {})
