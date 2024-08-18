@@ -1,5 +1,6 @@
 import asyncio
 import websockets
+import json
 import logging
 
 # Enable debug logging
@@ -9,14 +10,15 @@ async def listen_to_kismet():
     websocket_url = 'ws://localhost:2501/eventbus/events.ws?KISMET=D470660EF5CB6466F4B8143B204F8816'  # Replace with your WebSocket URL
 
     async with websockets.connect(websocket_url) as websocket:
-        print("Connected to Kismet WebSocket")
+        # Subscribe to the DOT11_ADVERTISED_SSID event
+        subscribe_message = {
+            "SUBSCRIBE": "DOT11_ADVERTISED_SSID"
+        }
+        await websocket.send(json.dumps(subscribe_message))
+        print("Subscribed to DOT11_ADVERTISED_SSID event")
 
         while True:
-            try:
-                message = await websocket.recv()
-                print("Received:", message)
-            except websockets.exceptions.ConnectionClosed as e:
-                print(f"WebSocket connection closed: {e}")
-                break
+            message = await websocket.recv()
+            print("Received:", message)
 
 asyncio.run(listen_to_kismet())
