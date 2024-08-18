@@ -11,7 +11,7 @@ async def listen_to_kismet():
     async with websockets.connect(websocket_url) as websocket:
         try:
             while True:
-                message = await asyncio.wait_for(websocket.recv(), timeout=10.0)
+                message = await asyncio.wait_for(websocket.recv(), timeout=20.0)
                 print("Received:", message)
         except asyncio.TimeoutError:
             print("No data received within the last 10 seconds, waiting...")
