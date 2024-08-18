@@ -6,4 +6,4 @@ pyyaml
 pytz
 prettytable
 tabulate
-psycopg2
+psycopg2 #sudo apt install libpq-dev python3-dev build-essential
