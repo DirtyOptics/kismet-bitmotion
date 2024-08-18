@@ -57,7 +57,7 @@ def convert_time(timestamp):
     return dt.strftime("%H:%M:%S %d-%m-%Y")
 
 def log_access_point(ap_data):
-    ssid = ap_data.get("kismet.device.base.name", "")
+    ssid = ap_data.get("dot11.advertisedssid.ssid", "")
     encryption_type = ap_data.get("kismet.device.base.crypt", "")
     channel = ap_data.get("kismet.device.base.channel", "")
     num_clients = len(ap_data.get("dot11.device.associated_client_map", {}))
@@ -149,7 +149,7 @@ async def capture_kismet_data():
                 
                 ap_data = {
                     "kismet.device.base.macaddr": base_device.get("kismet.device.base.macaddr", ""),
-                    "kismet.device.base.name": ssid_record.get("ssid", ""),
+                    "dot11.advertisedssid.ssid": ssid_record.get("dot11.advertisedssid.ssid", ""),
                     "kismet.device.base.last_time": base_device.get("kismet.device.base.last_time", ""),
                     "kismet.device.base.first_time": base_device.get("kismet.device.base.first_time", ""),
                     "kismet.device.base.crypt": base_device.get("kismet.device.base.crypt", ""),
