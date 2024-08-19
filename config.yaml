@@ -1,1 +1,5 @@
+api_token: "api key in here"
+timezone: "local"  # Use 'local' for local time or 'UTC' for Coordinated Universal Time
+database_url: "postgresql://usnername:password@192.168.x.x/kismet_db_aps"
+database_url: "postgresql://usnername:password@192.168.x.x/kismet_db_clients"
 
