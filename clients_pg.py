@@ -45,48 +45,55 @@ def convert_time(timestamp):
         dt = dt.astimezone()
     return dt.strftime("%H:%M:%S %d-%m-%Y")
 
-def log_client(ap_data):
-    bssid = ap_data.get("kismet.device.base.macaddr", "")
-    clients = ap_data.get("dot11.device.associated_client_map", {})
+def log_client(client_mac, client_info, bssid):
+    signal_dbm = client_info.get("kismet.common.signal.last_signal", None)
+    channel = client_info.get("dot11.device.last_beaconed_ssid", {}).get("kismet.common.ssid.channel", "")
+    manufacturer = client_info.get("kismet.device.base.manuf", "")
+    first_seen = convert_time(client_info.get("kismet.device.base.first_time", 0))
+    last_seen = convert_time(client_info.get("kismet.device.base.last_time", 0))
     
-    for client_mac, client_info in clients.items():
-        signal_dbm = client_info.get("kismet.common.signal.last_signal", None)
-        channel = ap_data.get("kismet.device.base.channel", "")
-        manufacturer = client_info.get("kismet.device.base.manuf", "")
-        first_seen = convert_time(client_info.get("kismet.device.base.first_time", 0))
-        last_seen = convert_time(client_info.get("kismet.device.base.last_time", 0))
+    print(f"Client MAC: {client_mac}, Signal: {signal_dbm}, Channel: {channel}, Manufacturer: {manufacturer}, "
+          f"First Seen: {first_seen}, Last Seen: {last_seen}, BSSID: {bssid}")
+
+    # Check if this client already exists in the database
+    last_observation = session.query(ClientObservation).filter_by(client_mac=client_mac).order_by(ClientObservation.last_seen.desc()).first()
+
+    # Only add to the database if something has changed
+    if (not last_observation or
+        last_observation.signal_dbm != signal_dbm or
+        last_observation.channel != channel or
+        last_observation.last_seen != last_seen):
         
-        print(f"Client MAC: {client_mac}, Signal: {signal_dbm}, Channel: {channel}, Manufacturer: {manufacturer}, "
-              f"First Seen: {first_seen}, Last Seen: {last_seen}, BSSID: {bssid}")
-
-        # Check if this client already exists in the database
-        last_observation = session.query(ClientObservation).filter_by(client_mac=client_mac).order_by(ClientObservation.last_seen.desc()).first()
-
-        # Only add to the database if something has changed
-        if (not last_observation or
-            last_observation.signal_dbm != signal_dbm or
-            last_observation.channel != channel or
-            last_observation.last_seen != last_seen):
-            
-            client_observation = ClientObservation(
-                client_mac=client_mac,
-                signal_dbm=signal_dbm,
-                channel=channel,
-                manufacturer=manufacturer,
-                first_seen=first_seen,
-                last_seen=last_seen,
-                bssid=bssid
-            )
-            session.add(client_observation)
-            session.commit()
+        client_observation = ClientObservation(
+            client_mac=client_mac,
+            signal_dbm=signal_dbm,
+            channel=channel,
+            manufacturer=manufacturer,
+            first_seen=first_seen,
+            last_seen=last_seen,
+            bssid=bssid
+        )
+        session.add(client_observation)
+        session.commit()
 
 def sweep_existing_clients():
     response = requests.get(kismet_rest_url)
+    print(f"API response status: {response.status_code}")
     if response.status_code == 200:
         devices = response.json()
+        print(f"Number of devices returned: {len(devices)}")
         for device in devices:
-            if "dot11.device.associated_client_map" in device:
-                log_client(device)
+            bssid = device.get("kismet.device.base.macaddr", "")
+            
+            # Process clients in the associated_client_map
+            associated_clients = device.get("dot11.device.associated_client_map", {})
+            for client_mac, client_info in associated_clients.items():
+                log_client(client_mac, client_info, bssid)
+            
+            # Process clients in the client_map
+            client_map = device.get("dot11.device.client_map", {})
+            for client_mac, client_info in client_map.items():
+                log_client(client_mac, client_info, bssid)
     else:
         print(f"Failed to fetch existing clients: {response.status_code}")
 
