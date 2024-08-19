@@ -38,6 +38,8 @@ view_id = "phy-IEEE802.11"  # This is the view that contains both AP and client 
 kismet_rest_url = f"http://localhost:2501/devices/views/{view_id}/devices.json?KISMET={api_token}"
 
 def convert_time(timestamp):
+    if timestamp == 0:
+        return None
     dt = datetime.fromtimestamp(timestamp)
     if timezone_setting == "UTC":
         dt = dt.replace(tzinfo=timezone.utc)
@@ -78,6 +80,7 @@ def log_client_data(client_data, bssid):
                 )
                 session.add(client_observation)
                 session.commit()
+                print(f"Data committed to database for client {client_mac}")
         else:
             print(f"Unexpected data format for client {client_mac}: {client_info}")
 
