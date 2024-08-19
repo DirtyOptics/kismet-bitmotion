@@ -39,32 +39,42 @@ Config.yaml has the url to db.
 Create db, username/pw
 
 #log in to PostgreSQL as super user
-```sudo -i -u postgres
+```
+sudo -i -u postgres
 ```
 #Start Postgres
-```psql
+```
+psql
 ```
 #verify users
-```\du
+```
+\du
 ```
 #create user 'db'
-```CREATE USER db WITH PASSWORD 'your_password';
+```
+CREATE USER db WITH PASSWORD 'your_password';
 ```
 #Create databases
-```CREATE DATABASE kismet_db_aps OWNER db;
 ```
-```CREATE DATABASE kismet_db_client OWNER db;
+CREATE DATABASE kismet_db_aps OWNER db;
+```
+```
+CREATE DATABASE kismet_db_client OWNER db;
 ```
 #permissions
-```GRANT ALL PRIVILEGES ON DATABASE kismet_db_aps TO db;
 ```
-```GRANT ALL PRIVILEGES ON DATABASE kismet_db_clients TO db;
+GRANT ALL PRIVILEGES ON DATABASE kismet_db_aps TO db;
+```
+```
+GRANT ALL PRIVILEGES ON DATABASE kismet_db_clients TO db;
 ```
 #exit PostgreSQL CLI
-```\q
+```
+\q
 ```
 #exit postgres
-```exit
+```
+exit
 ```
 
 
