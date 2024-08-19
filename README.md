@@ -41,16 +41,28 @@ Create db, username/pw
 #log in to PostgreSQL as super user
 sudo -i -u postgres
 
-# Start Postgres
+#Start Postgres
 psql
 
 #verify users
 \du
 
+#create user 'db'
+CREATE USER db WITH PASSWORD 'your_password';
 
+#Create databases
+CREATE DATABASE kismet_db_aps OWNER db;
+CREATE DATABASE kismet_db_client OWNER db;
 
-#New DB
-psql -U db -c "CREATE DATABASE kismet_db_clients;"
+#permissions
+GRANT ALL PRIVILEGES ON DATABASE kismet_db_aps TO db;
+GRANT ALL PRIVILEGES ON DATABASE kismet_db_clients TO db;
+
+#exit PostgreSQL CLI
+\q
+
+#exit postgres
+exit
 
 
 
