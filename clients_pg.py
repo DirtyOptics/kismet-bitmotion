@@ -47,36 +47,39 @@ def convert_time(timestamp):
 
 def log_client_data(client_data, bssid):
     for client_mac, client_info in client_data.items():
-        signal_dbm = client_info.get("dot11.client.rx_cryptset", None)
-        channel = client_info.get("dot11.client.bssid", None)
-        manufacturer = ""  # Kismet may not provide this directly for clients
-        first_seen = convert_time(client_info.get("dot11.client.first_time", 0))
-        last_seen = convert_time(client_info.get("dot11.client.last_time", 0))
-        observation_timestamp = datetime.now().strftime("%H:%M:%S %d-%m-%Y")
+        if isinstance(client_info, dict):  # Ensure client_info is a dictionary
+            signal_dbm = client_info.get("kismet.common.signal.last_signal", None)
+            channel = client_info.get("kismet.device.base.channel", None)
+            manufacturer = client_info.get("kismet.device.base.manuf", "")
+            first_seen = convert_time(client_info.get("kismet.device.base.first_time", 0))
+            last_seen = convert_time(client_info.get("kismet.device.base.last_time", 0))
+            observation_timestamp = datetime.now().strftime("%H:%M:%S %d-%m-%Y")
 
-        print(f"Client MAC: {client_mac}, BSSID: {bssid}, Signal: {signal_dbm}, Channel: {channel}, "
-              f"First Seen: {first_seen}, Last Seen: {last_seen}, Timestamp: {observation_timestamp}")
-        
-        # Check if this client already exists in the database
-        last_observation = session.query(ClientObservation).filter_by(client_mac=client_mac, bssid=bssid).order_by(ClientObservation.timestamp.desc()).first()
-
-        # Only add to the database if something has changed
-        if (not last_observation or
-            last_observation.signal_dbm != signal_dbm or
-            last_observation.last_seen != last_seen):
+            print(f"Client MAC: {client_mac}, BSSID: {bssid}, Signal: {signal_dbm}, Channel: {channel}, "
+                  f"First Seen: {first_seen}, Last Seen: {last_seen}, Timestamp: {observation_timestamp}")
             
-            client_observation = ClientObservation(
-                client_mac=client_mac,
-                signal_dbm=signal_dbm,
-                channel=channel,
-                bssid=bssid,
-                manufacturer=manufacturer,
-                first_seen=first_seen,
-                last_seen=last_seen,
-                timestamp=observation_timestamp
-            )
-            session.add(client_observation)
-            session.commit()
+            # Check if this client already exists in the database
+            last_observation = session.query(ClientObservation).filter_by(client_mac=client_mac, bssid=bssid).order_by(ClientObservation.timestamp.desc()).first()
+
+            # Only add to the database if something has changed
+            if (not last_observation or
+                last_observation.signal_dbm != signal_dbm or
+                last_observation.last_seen != last_seen):
+                
+                client_observation = ClientObservation(
+                    client_mac=client_mac,
+                    signal_dbm=signal_dbm,
+                    channel=channel,
+                    bssid=bssid,
+                    manufacturer=manufacturer,
+                    first_seen=first_seen,
+                    last_seen=last_seen,
+                    timestamp=observation_timestamp
+                )
+                session.add(client_observation)
+                session.commit()
+        else:
+            print(f"Unexpected data format for client {client_mac}: {client_info}")
 
 def process_device(device):
     bssid = device.get("kismet.device.base.macaddr", "")
