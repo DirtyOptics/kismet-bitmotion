@@ -75,12 +75,14 @@ def log_client(client_mac, client_info, bssid):
         )
         session.add(client_observation)
         session.commit()
+        print("Data committed to database")  # Confirmation message
 
 def sweep_existing_clients():
     response = requests.get(kismet_rest_url)
     print(f"API response status: {response.status_code}")
     if response.status_code == 200:
         devices = response.json()
+        print(f"Full API response: {devices}")  # Debug: Print the full API response
         print(f"Number of devices returned: {len(devices)}")
         for device in devices:
             bssid = device.get("kismet.device.base.macaddr", "")
