@@ -38,6 +38,19 @@ Installed locally to Grafana
 Config.yaml has the url to db.
 Create db, username/pw
 
+#log in to PostgreSQL as super user
+sudo -i -u postgres
+
+# Start Postgres
+psql
+
+#verify users
+\du
+
+
+
+#New DB
+psql -U db -c "CREATE DATABASE kismet_db_clients;"
 
 
 
