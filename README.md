@@ -70,5 +70,26 @@ GRANT ALL PRIVILEGES ON DATABASE kismet_db_clients TO db;
 exit
 ```
 
+#### Edit postgresql.conf
+```
+sudo nano /etc/postgresql/14/main/postgresql.conf
+```
+```
+listen_addresses = '*'
+```
+#### Edit pg_hba.conf
+```
+sudo nano /etc/postgresql/14/main/pg_hba.conf
+```
+```
+# Allow all IPv4 addresses
+host    all             all             0.0.0.0/0            md5
 
+# Alternatively, allow connections from a specific IP range
+host    all             all             <your-ip-range>/24   md5
+```
+#### Retsart Postgresql
+```
+sudo systemctl restart postgresql
+```
 
