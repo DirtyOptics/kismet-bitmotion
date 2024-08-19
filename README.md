@@ -1,5 +1,5 @@
 # kismet-bitmotion
-## Intial Setup/Python
+## INITIAL SETUP/PYTHON
 #### Clone Repo
 ```
 git clone https://github.com/DirtyOptics/kismet-bitmotion.git
