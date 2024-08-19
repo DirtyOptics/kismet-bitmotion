@@ -39,9 +39,12 @@ sudo -i -u postgres
 ```
 psql
 ```
-##### verify users
+##### verify current users and databases
 ```
 \du
+```
+```
+\l
 ```
 ##### create user 'db'
 ```
