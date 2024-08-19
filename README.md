@@ -52,7 +52,7 @@ CREATE USER db WITH PASSWORD 'your_password';
 CREATE DATABASE kismet_db_aps OWNER db;
 ```
 ```
-CREATE DATABASE kismet_db_client OWNER db;
+CREATE DATABASE kismet_db_clients OWNER db;
 ```
 ##### permissions
 ```
