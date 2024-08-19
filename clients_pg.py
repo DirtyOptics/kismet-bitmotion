@@ -2,7 +2,6 @@ import asyncio
 import requests
 import yaml
 from datetime import datetime, timezone
-import pytz
 from sqlalchemy import create_engine, Column, Integer, String, Float
 from sqlalchemy.orm import declarative_base, sessionmaker
 
@@ -12,7 +11,7 @@ with open('config.yaml', 'r') as config_file:
 
 api_token = config.get("api_token")
 timezone_setting = config.get("timezone", "local")
-database_url = config.get("client_database_url")  # Using a separate database for clients
+database_url_clients = config.get("database_url_clients")  # Correct reference here
 
 # Database setup
 Base = declarative_base()
@@ -30,7 +29,7 @@ class ClientObservation(Base):
     timestamp = Column(String)
 
 # Create the engine using the PostgreSQL URL from the config
-engine = create_engine(database_url)
+engine = create_engine(database_url_clients)  # Correct reference here
 Base.metadata.create_all(engine)
 Session = sessionmaker(bind=engine)
 session = Session()
