@@ -13,7 +13,7 @@ with open('config.yaml', 'r') as config_file:
 
 api_token = config.get("api_token")
 timezone_setting = config.get("timezone", "local")
-database_url = config.get("database_url")  # No default here, we're now relying on the config.yaml
+database_url = config.get("database_url_aps")  # No default here, we're now relying on the config.yaml
 
 # Database setup
 Base = declarative_base()
