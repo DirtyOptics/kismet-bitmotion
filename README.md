@@ -1,5 +1,5 @@
 # kismet-bitmotion
-
+## Intial Setup/Python
 #### Clone Repo
 ```
 git clone https://github.com/DirtyOptics/kismet-bitmotion.git
@@ -31,48 +31,48 @@ sudo chmod -R u+rwX /home/user/kismet-bitmotion
 pip install -r requirements.txt
 ```
 
-### DB NOTES
+## DB NOTES
 
 PostgreSQL 14
 Installed locally to Grafana
 Config.yaml has the url to db.
 Create db, username/pw
 
-#log in to PostgreSQL as super user
+#### log in to PostgreSQL as super user
 ```
 sudo -i -u postgres
 ```
-#Start Postgres
+#### Start Postgres
 ```
 psql
 ```
-#verify users
+##### verify users
 ```
 \du
 ```
-#create user 'db'
+##### create user 'db'
 ```
 CREATE USER db WITH PASSWORD 'your_password';
 ```
-#Create databases
+##### Create databases
 ```
 CREATE DATABASE kismet_db_aps OWNER db;
 ```
 ```
 CREATE DATABASE kismet_db_client OWNER db;
 ```
-#permissions
+##### permissions
 ```
 GRANT ALL PRIVILEGES ON DATABASE kismet_db_aps TO db;
 ```
 ```
 GRANT ALL PRIVILEGES ON DATABASE kismet_db_clients TO db;
 ```
-#exit PostgreSQL CLI
+##### exit PostgreSQL CLI
 ```
 \q
 ```
-#exit postgres
+##### exit postgres
 ```
 exit
 ```
